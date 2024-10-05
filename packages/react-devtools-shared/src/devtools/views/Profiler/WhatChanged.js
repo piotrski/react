@@ -21,8 +21,20 @@ import {
 
 import styles from './WhatChanged.css';
 
-function hookIndicesToString(indices: Array<number>): string {
+function hookIndicesToString(indices: Array<number>, hookNames: Map<number, string>): string {
   // This is debatable but I think 1-based might ake for a nicer UX.
+
+  if (hookNames?.size > 0) {
+    const entries = Array.from(hookNames.entries());
+
+    const hooksWithNames = indices.map(index => {
+      const entry = entries[index];
+      const name = entry ? entry[1] : null;
+      return name ? `Hook ${index+1} (${name})` : `Hook ${index}`;
+    });
+    return hooksWithNames.join(', ') + ' changed';
+  }
+
   const numbers = indices.map(value => value + 1);
 
   switch (numbers.length) {
@@ -86,6 +98,15 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     element
   });
 
+  const hookNames = element && loadHookNames(
+    element,
+    null,
+    ()=>{},
+    ()=>{},
+  );
+
+  console.log('hookNames',hookNames);
+
   if (isFirstMount) {
     return (
       <div className={styles.Component}>
@@ -126,7 +147,7 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     if (Array.isArray(hooks)) {
       changes.push(
         <div key="hooks" className={styles.Item}>
-          • {hookIndicesToString(hooks)}
+          • {hookIndicesToString(hooks, hookNames)}
         </div>,
       );
     } else {
