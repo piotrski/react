@@ -12,6 +12,12 @@ import {useContext} from 'react';
 
 import {ProfilerContext} from './ProfilerContext';
 import {StoreContext} from '../context';
+import HookNamesModuleLoaderContext from 'react-devtools-shared/src/devtools/views/Components/HookNamesModuleLoaderContext';
+import {
+  clearHookNamesCache,
+  hasAlreadyLoadedHookNames,
+  loadHookNames,
+} from 'react-devtools-shared/src/hookNamesCache';
 
 import styles from './WhatChanged.css';
 
@@ -38,8 +44,11 @@ type Props = {
 };
 
 export default function WhatChanged({fiberID}: Props): React.Node {
-  const {profilerStore} = useContext(StoreContext);
+  const {profilerStore,...store} = useContext(StoreContext);
   const {rootID, selectedCommitIndex} = useContext(ProfilerContext);
+  const hookNamesModuleLoader = useContext(HookNamesModuleLoaderContext);
+  console.log('WhatChanged');
+
 
   // TRICKY
   // Handle edge case where no commit is selected because of a min-duration filter update.
@@ -65,6 +74,17 @@ export default function WhatChanged({fiberID}: Props): React.Node {
 
   const {context, didHooksChange, hooks, isFirstMount, props, state} =
     changeDescription;
+
+  const element = store._idToElement.get(fiberID);
+
+  const alreadyLoadedHookNames =
+    element != null && hasAlreadyLoadedHookNames(element);
+
+  console.log({
+    fiberID,
+    alreadyLoadedHookNames,
+    element
+  });
 
   if (isFirstMount) {
     return (
