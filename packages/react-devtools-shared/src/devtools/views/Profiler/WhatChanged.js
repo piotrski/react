@@ -11,26 +11,78 @@ import * as React from 'react';
 import {useContext} from 'react';
 
 import {ProfilerContext} from './ProfilerContext';
-import {StoreContext} from '../context';
+import {BridgeContext, StoreContext} from '../context';
 import HookNamesModuleLoaderContext from 'react-devtools-shared/src/devtools/views/Components/HookNamesModuleLoaderContext';
+import hookStyles from '../Components/InspectedElementHooksTree.css';
 import {
   clearHookNamesCache,
   hasAlreadyLoadedHookNames,
   loadHookNames,
 } from 'react-devtools-shared/src/hookNamesCache';
+import {
+  inspectElement,
+  startElementUpdatesPolling,
+} from 'react-devtools-shared/src/inspectedElementCache';
 
 import styles from './WhatChanged.css';
 
-function hookIndicesToString(indices: Array<number>, hookNames: Map<number, string>): string {
+function HookChangeSummary({
+  hooks,
+  hookNames,
+}: {
+  hooks: Array<number>,
+  hookNames?: Map<number, string>,
+}): React.Node {
+  if (hooks.length === 0) {
+    return <>No hooks changed</>;
+  }
+
+  const entries = Array.from(hookNames?.entries());
+
+  const hookDescriptions = hooks.map(hookID => {
+    const name = hookNames && entries[hookID][1];
+    return (
+      <span key={hookID}>
+        <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>
+        {!!name && ` State<em>(${name})</em>`}
+      </span>
+    );
+  });
+
+  return (
+    <>
+      {hooks.length > 1 ? 'Hooks ' : 'Hook '}
+      {hookDescriptions.reduce((acc, curr, idx) => (
+        <>
+          {acc}
+          {idx === hookDescriptions.length - 1 ? ' and ' : ', '}
+          {curr}
+        </>
+      ))}
+      {' changed'}
+    </>
+  );
+}
+
+
+function hookIndicesToString(
+  indices: Array<number>,
+  hookNames: Map<number, string>,
+): string {
   // This is debatable but I think 1-based might ake for a nicer UX.
 
   if (hookNames?.size > 0) {
     const entries = Array.from(hookNames.entries());
 
-    const hooksWithNames = indices.map(index => {
-      const entry = entries[index];
+    const hooksWithNames = indices.map(hookID => {
+      const entry = entries[hookID];
       const name = entry ? entry[1] : null;
-      return name ? `Hook ${index+1} (${name})` : `Hook ${index}`;
+      return (
+        <>
+          <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>{' '}
+          {name}
+        </>
+      );
     });
     return hooksWithNames.join(', ') + ' changed';
   }
@@ -56,11 +108,11 @@ type Props = {
 };
 
 export default function WhatChanged({fiberID}: Props): React.Node {
-  const {profilerStore,...store} = useContext(StoreContext);
+  const {profilerStore, ...store} = useContext(StoreContext);
   const {rootID, selectedCommitIndex} = useContext(ProfilerContext);
+  const bridge = useContext(BridgeContext);
   const hookNamesModuleLoader = useContext(HookNamesModuleLoaderContext);
   console.log('WhatChanged');
-
 
   // TRICKY
   // Handle edge case where no commit is selected because of a min-duration filter update.
@@ -93,19 +145,29 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     element != null && hasAlreadyLoadedHookNames(element);
 
   console.log({
+    profilerStore,
+    store,
+  });
+  console.log({
     fiberID,
     alreadyLoadedHookNames,
-    element
+    element,
   });
 
-  const hookNames = element && loadHookNames(
-    element,
-    null,
-    ()=>{},
-    ()=>{},
-  );
+  const hookNames =
+    element &&
+    loadHookNames(
+      element,
+      null,
+      () => {}, // TODO: fix this
+      () => {},
+    );
 
-  console.log('hookNames',hookNames);
+  console.log('hookNames', hookNames);
+
+  const inspectedElement = inspectElement(element, state?.path, store, bridge);
+
+  console.log('inspectedElement', inspectedElement);
 
   if (isFirstMount) {
     return (
@@ -143,11 +205,14 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     );
   }
 
+  console.log({didHooksChange, hooks
+  });
+
   if (didHooksChange) {
     if (Array.isArray(hooks)) {
       changes.push(
         <div key="hooks" className={styles.Item}>
-          • {hookIndicesToString(hooks, hookNames)}
+          • <HookChangeSummary hooks={hooks} hookNames={hookNames} />
         </div>,
       );
     } else {
