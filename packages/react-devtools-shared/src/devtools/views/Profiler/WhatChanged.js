@@ -24,27 +24,66 @@ import {
   startElementUpdatesPolling,
 } from 'react-devtools-shared/src/inspectedElementCache';
 
+import type {InspectedElement} from 'react-devtools-shared/src/frontend/types';
+
 import styles from './WhatChanged.css';
+
+function getHookName(hookSource, hookNames) {
+  const key = `${hookSource.fileName}:${hookSource.lineNumber}:${hookSource.columnNumber}`;
+  return hookNames.get(key);
+}
+
+function extractHookDescriptions({
+  hooks: allHooks,
+  hookNames,
+}: {
+  hooks: InspectedElement['hooks'],
+  hookNames?: Map<number, string>,
+}) {
+  const descriptions = {};
+
+  function traverseHooks(hooks: InspectedElement['hooks']) {
+    hooks.forEach(hook => {
+      if (hook.id !== null) {
+        console.log('hookSource', hook.hookSource);
+        const name = getHookName(hook.hookSource, hookNames);
+        descriptions[hook.id] = {name, type: hook.name};
+      }
+      if (hook.subHooks.length > 0) {
+        traverseHooks(hook.subHooks);
+      }
+    });
+  }
+
+  traverseHooks(allHooks);
+  return descriptions;
+}
 
 function HookChangeSummary({
   hooks,
   hookNames,
+  inspectedElement,
 }: {
   hooks: Array<number>,
   hookNames?: Map<number, string>,
+  inspectedElement?: InspectedElement,
 }): React.Node {
   if (hooks.length === 0) {
     return <>No hooks changed</>;
   }
 
-  const entries = Array.from(hookNames?.entries());
+  const descriptions = extractHookDescriptions({
+    hooks: inspectedElement.hooks,
+    hookNames,
+  });
 
   const hookDescriptions = hooks.map(hookID => {
-    const name = hookNames && entries[hookID][1];
+    const {name, type} = descriptions[hookID];
+
     return (
       <span key={hookID}>
         <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>
-        {!!name && ` State<em>(${name})</em>`}
+        {!!name && !!type && <>{type}<strong>({name})</strong></>}
       </span>
     );
   });
@@ -62,45 +101,6 @@ function HookChangeSummary({
       {' changed'}
     </>
   );
-}
-
-
-function hookIndicesToString(
-  indices: Array<number>,
-  hookNames: Map<number, string>,
-): string {
-  // This is debatable but I think 1-based might ake for a nicer UX.
-
-  if (hookNames?.size > 0) {
-    const entries = Array.from(hookNames.entries());
-
-    const hooksWithNames = indices.map(hookID => {
-      const entry = entries[hookID];
-      const name = entry ? entry[1] : null;
-      return (
-        <>
-          <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>{' '}
-          {name}
-        </>
-      );
-    });
-    return hooksWithNames.join(', ') + ' changed';
-  }
-
-  const numbers = indices.map(value => value + 1);
-
-  switch (numbers.length) {
-    case 0:
-      return 'No hooks changed';
-    case 1:
-      return `Hook ${numbers[0]} changed`;
-    case 2:
-      return `Hooks ${numbers[0]} and ${numbers[1]} changed`;
-    default:
-      return `Hooks ${numbers.slice(0, numbers.length - 1).join(', ')} and ${
-        numbers[numbers.length - 1]
-      } changed`;
-  }
 }
 
 type Props = {
@@ -205,14 +205,18 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     );
   }
 
-  console.log({didHooksChange, hooks
-  });
+  console.log({didHooksChange, hooks});
 
   if (didHooksChange) {
     if (Array.isArray(hooks)) {
       changes.push(
         <div key="hooks" className={styles.Item}>
-          • <HookChangeSummary hooks={hooks} hookNames={hookNames} />
+          •{' '}
+          <HookChangeSummary
+            hooks={hooks}
+            hookNames={hookNames}
+            inspectedElement={inspectedElement}
+          />
         </div>,
       );
     } else {
