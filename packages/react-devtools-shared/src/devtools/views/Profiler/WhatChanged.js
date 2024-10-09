@@ -15,13 +15,11 @@ import {BridgeContext, StoreContext} from '../context';
 import HookNamesModuleLoaderContext from 'react-devtools-shared/src/devtools/views/Components/HookNamesModuleLoaderContext';
 import hookStyles from '../Components/InspectedElementHooksTree.css';
 import {
-  clearHookNamesCache,
   hasAlreadyLoadedHookNames,
   loadHookNames,
 } from 'react-devtools-shared/src/hookNamesCache';
 import {
   inspectElement,
-  startElementUpdatesPolling,
 } from 'react-devtools-shared/src/inspectedElementCache';
 
 import type {InspectedElement} from 'react-devtools-shared/src/frontend/types';
@@ -43,16 +41,17 @@ function extractHookDescriptions({
   const descriptions = {};
 
   function traverseHooks(hooks: InspectedElement['hooks']) {
-    hooks.forEach(hook => {
-      if (hook.id !== null) {
-        console.log('hookSource', hook.hookSource);
-        const name = getHookName(hook.hookSource, hookNames);
-        descriptions[hook.id] = {name, type: hook.name};
-      }
-      if (hook.subHooks.length > 0) {
-        traverseHooks(hook.subHooks);
-      }
-    });
+    if (hookNames?.size > 0 && hooks?.length > 0)
+      hooks?.forEach(hook => {
+        if (hook.id !== null) {
+          console.log('hookSource', hook.hookSource);
+          const name = hookNames && getHookName(hook.hookSource, hookNames);
+          descriptions[hook.id] = {name, type: hook.name};
+        }
+        if (hook.subHooks.length > 0) {
+          traverseHooks(hook.subHooks);
+        }
+      });
   }
 
   traverseHooks(allHooks);
@@ -73,17 +72,30 @@ function HookChangeSummary({
   }
 
   const descriptions = extractHookDescriptions({
-    hooks: inspectedElement.hooks,
+    hooks: inspectedElement?.hooks,
     hookNames,
   });
 
   const hookDescriptions = hooks.map(hookID => {
-    const {name, type} = descriptions[hookID];
+    if (descriptions?.[hookID]?.name && descriptions?.[hookID]?.type) {
+      const {name, type} = descriptions[hookID];
+
+      return (
+        <span key={hookID}>
+          <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>
+          {!!name && !!type && (
+            <>
+              {type}
+              <strong>({name})</strong>
+            </>
+          )}
+        </span>
+      );
+    }
 
     return (
       <span key={hookID}>
         <span className={hookStyles.PrimitiveHookNumber}>{hookID + 1}</span>
-        {!!name && !!type && <>{type}<strong>({name})</strong></>}
       </span>
     );
   });
@@ -154,20 +166,26 @@ export default function WhatChanged({fiberID}: Props): React.Node {
     element,
   });
 
-  const hookNames =
-    element &&
-    loadHookNames(
-      element,
-      null,
-      () => {}, // TODO: fix this
-      () => {},
-    );
+  let hookNames;
+  let inspectedElement;
+  try {
+    hookNames =
+      element &&
+      loadHookNames(
+        element,
+        null,
+        () => {}, // TODO: fix this
+        () => {},
+      );
+  } catch (error) {
+    console.error('hookNames error', error);
+  }
 
-  console.log('hookNames', hookNames);
-
-  const inspectedElement = inspectElement(element, state?.path, store, bridge);
-
-  console.log('inspectedElement', inspectedElement);
+  try {
+    inspectedElement = inspectElement(element, state?.path, store, bridge);
+  } catch (error) {
+    console.error('inspectedElement error', error);
+  }
 
   if (isFirstMount) {
     return (
