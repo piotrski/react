@@ -36,6 +36,7 @@ export type Data = {
   expirationTime: number,
   lastMeasuredAt: number,
   rect: Rect | null,
+  displayName: string | null,
 };
 
 const nodeToData: Map<HostInstance, Data> = new Map();
@@ -86,6 +87,8 @@ function traceUpdates(nodes: Set<HostInstance>): void {
       rect = measureNode(node);
     }
 
+    const displayName = agent.getComponentNameForHostInstance(node);
+
     nodeToData.set(node, {
       count: data != null ? data.count + 1 : 1,
       expirationTime:
@@ -97,6 +100,7 @@ function traceUpdates(nodes: Set<HostInstance>): void {
           : now + DISPLAY_DURATION,
       lastMeasuredAt,
       rect,
+      displayName,
     });
   });
 
