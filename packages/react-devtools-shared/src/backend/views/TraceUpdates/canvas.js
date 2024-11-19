@@ -74,11 +74,11 @@ type GroupItem = {
 export function groupAndSortNodes(nodeToData: Map<HostInstance, Data>) {
   const positionGroups: Map<string, Array<GroupItem>> = new Map();
 
-  iterateNodes(nodeToData, ({ rect, color, displayName, count }) => {
+  iterateNodes(nodeToData, ({rect, color, displayName, count}) => {
     if (!rect) return;
     const key = `${rect.left},${rect.top}`;
     if (!positionGroups.has(key)) positionGroups.set(key, []);
-    positionGroups.get(key)?.push({ rect, color, displayName, count });
+    positionGroups.get(key)?.push({rect, color, displayName, count});
   });
 
   return Array.from(positionGroups.values()).sort((groupA, groupB) => {
@@ -88,16 +88,24 @@ export function groupAndSortNodes(nodeToData: Map<HostInstance, Data>) {
   });
 }
 
-function drawGroupBorders(context: CanvasRenderingContext2D, group: Array<GroupItem>) {
-  group.forEach(({ color, rect }) => {
+function drawGroupBorders(
+  context: CanvasRenderingContext2D,
+  group: Array<GroupItem>,
+) {
+  group.forEach(({color, rect}) => {
     context.strokeStyle = color;
     context.rect(rect.left, rect.top, rect.width - 1, rect.height - 1);
   });
 }
 
-function drawGroupLabel(context: CanvasRenderingContext2D, group: Array<GroupItem>) {
+function drawGroupLabel(
+  context: CanvasRenderingContext2D,
+  group: Array<GroupItem>,
+) {
   const mergedName = group
-    .map(({ displayName, count }) => displayName ? `${displayName}${count > 1 ? ` x${count}` : ''}` : '')
+    .map(({displayName, count}) =>
+      displayName ? `${displayName}${count > 1 ? ` x${count}` : ''}` : '',
+    )
     .filter(Boolean)
     .join(', ');
 
@@ -135,7 +143,7 @@ function drawLabel(
   text: string,
   color: string,
 ): void {
-  const { left, top } = rect;
+  const {left, top} = rect;
   context.font = '10px monospace';
   context.textBaseline = 'middle';
   context.textAlign = 'center';
@@ -156,7 +164,7 @@ function drawLabel(
   context.fillText(
     text,
     labelX + backgroundWidth / 2,
-    labelY + backgroundHeight / 2
+    labelY + backgroundHeight / 2,
   );
 }
 
