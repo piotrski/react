@@ -96,7 +96,10 @@ function traceUpdates(nodes: Set<HostInstance>): void {
       rect = measureNode(node);
     }
 
-    const displayName = agent.getComponentNameForHostInstance(node);
+    let displayName = agent.getComponentNameForHostInstance(node);
+    if (displayName != null && displayName.startsWith('Forget(')) {
+      displayName = '✨' + displayName.slice(7, -1);
+    }
 
     nodeToData.set(node, {
       count: data != null ? data.count + 1 : 1,
