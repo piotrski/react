@@ -71,7 +71,7 @@ type GroupItem = {
   count: number,
 };
 
-function groupAndSortNodes(nodeToData: Map<HostInstance, Data>) {
+export function groupAndSortNodes(nodeToData: Map<HostInstance, Data>) {
   const positionGroups: Map<string, Array<GroupItem>> = new Map();
 
   iterateNodes(nodeToData, ({ rect, color, displayName, count }) => {
