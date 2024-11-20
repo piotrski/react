@@ -37,6 +37,7 @@ import styles from './Tree.css';
 import ButtonIcon from '../ButtonIcon';
 import Button from '../Button';
 import {logEvent} from 'react-devtools-shared/src/Logger';
+import TraceUpdatesToggle from './TraceUpdatesToggle';
 
 // Never indent more than this number of pixels (even if we have the room).
 const DEFAULT_INDENTATION_SIZE = 12;
@@ -401,6 +402,12 @@ export default function Tree(props: Props): React.Node {
                 <ButtonIcon type="clear" />
               </Button>
             </React.Fragment>
+          )}
+          {!hideSettings && (
+            <Fragment>
+              <div className={styles.VRule} />
+              <TraceUpdatesToggle />
+            </Fragment>
           )}
           {!hideSettings && (
             <Fragment>
